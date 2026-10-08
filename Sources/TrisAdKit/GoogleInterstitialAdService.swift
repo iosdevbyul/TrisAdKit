@@ -1,4 +1,3 @@
-import AVFAudio
 import Foundation
 import GoogleMobileAds
 import UIKit
@@ -10,7 +9,6 @@ public final class GoogleInterstitialAdService: NSObject, AdService {
     private let adUnitID: String
     private let canRequestAds: @MainActor () -> Bool
     private let presenter: @MainActor () -> UIViewController?
-    private let isOtherAudioPlaying: @MainActor () -> Bool
     private var loadedAd: InterstitialAd?
     private var isLoading = false
     private var continuation: CheckedContinuation<AdPresentationResult, Never>?
@@ -18,15 +16,11 @@ public final class GoogleInterstitialAdService: NSObject, AdService {
     public init(
         adUnitID: String,
         canRequestAds: @escaping @MainActor () -> Bool,
-        presenter: @escaping @MainActor () -> UIViewController?,
-        isOtherAudioPlaying: @escaping @MainActor () -> Bool = {
-            AVAudioSession.sharedInstance().isOtherAudioPlaying
-        }
+        presenter: @escaping @MainActor () -> UIViewController?
     ) {
         self.adUnitID = adUnitID
         self.canRequestAds = canRequestAds
         self.presenter = presenter
-        self.isOtherAudioPlaying = isOtherAudioPlaying
         super.init()
     }
 
@@ -48,9 +42,7 @@ public final class GoogleInterstitialAdService: NSObject, AdService {
     }
 
     public func presentInterstitialIfAvailable() async -> AdPresentationResult {
-        // Fail closed rather than risk interrupting a user's music.
         guard canRequestAds(),
-              !isOtherAudioPlaying(),
               continuation == nil,
               let ad = loadedAd,
               let viewController = presenter() else {

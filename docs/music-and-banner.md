@@ -1,34 +1,52 @@
-# Banner ads and external music
+# Ad audio behavior
 
-TrisAdKit supports two formats:
+TrisAdKit **does not suppress ads** when another application plays music.
+Banner and interstitial eligibility depend on consent, ad availability and
+presentation state only.
 
-- `GoogleBannerAdView`: adaptive banner that can appear in SwiftUI layouts.
-- `GoogleInterstitialAdService`: full-screen interstitial behind the existing `AdService` protocol.
-
-## Audio protection
-
-**Listening to music takes priority over ad revenue.** By default, interstitial presentation checks `AVAudioSession.sharedInstance().isOtherAudioPlaying`. If another app is already playing audio, the interstitial returns `.unavailable` without showing anything.
-
-`GoogleBannerAdView` defaults to hiding the banner whenever external audio is detected on a SwiftUI update. Apps must drive SwiftUI updates when audio playback changes; simply checking inside `updateUIView` is not a continuous audio observer. For strict noninterruption guarantees, avoid loading banners when external music plays.
-
-The `allowsAdvertisingAudio` banner override can disable that conservative skip; applications prioritizing music should keep the default `false`.
-
-**Limitations:** Some mediated video ads may use their own audio session behavior. These safeguards avoid starting an interstitial while other audio is detected, but cannot guarantee that a newly started music session will not be affected by an advertisement already in progress. Verify on physical devices with Apple Music, Spotify, headphones and different mediated networks before declaring music uninterrupted.
-
-Do not force-set AdMob `applicationMuted` or `applicationVolume = 0` purely to mute ads: Google documents that these values should reflect actual app audio controls and may reduce eligible inventory.
-
-## Banner example
+### Preferred audio mixing (opt-in)
 
 ```swift
-import SwiftUI
 import TrisAdKit
 
+let audio = AdAudioSessionManager()
+let result = audio.configurePreferredMixing()
+```
+
+`configurePreferredMixing()` configures the process-wide iOS audio session
+using `.ambient`, which supports mixing with other apps' audio, and tells
+Google Mobile Ads to let the application manage the audio session. Neither
+`duckOthers` nor an ad mute override is used.
+
+If the session cannot be configured, the method returns
+`.sdkManagedFallback` and leaves audio management to the Google SDK.
+The ad will still be eligible for display.
+
+**Host app responsibility:** `AVAudioSession` is shared across the app.
+Do not call this method blindly in an app that already manages an audio session
+(e.g., voice chat or a workout coaching player); coordinate session ownership
+at the application boundary. `useSDKManagedAudio()` returns management to
+the Google SDK without rewriting the app's audio session.
+
+**Limitations:** SDK mediation, third-party ad creatives, AirPlay, Bluetooth
+routes and other audio-session owners can behave differently. Mixing is a
+best-effort preference, **not a guarantee** that external playback never stops.
+Verify with Apple Music / Spotify on physical devices before claiming guaranteed
+coexistence.
+
+Documentation: https://developers.google.com/admob/ios/global-settings
+
+## Banner
+
+```swift
 GoogleBannerAdView(
     adUnitID: "ca-app-pub-3940256099942544/2435281174",
     width: 350,
     canRequestAds: { consent.canRequestAds }
 )
-.frame(height: 70)
 ```
 
-Use the correct adaptive size when laying out the view; the above height is illustrative. `GoogleBannerAdView` is the SDK adapter, not the place to decide a host application's membership or advertising schedule.
+## Interstitial
+
+`GoogleInterstitialAdService` no longer takes
+`isOtherAudioPlaying`. It never skips an advertisement because of music.

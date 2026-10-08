@@ -1,22 +1,9 @@
-import AVFAudio
-import Foundation
-
-/// Explicit policy for preserving audio playing in other apps.
-/// External audio is checked immediately before an interstitial is presented.
-/// This is deliberately conservative: a skipped ad never blocks the host flow.
+/// Audio behavior is independent of whether another app is playing music.
+/// Both banner and interstitial advertisements remain eligible.
+/// Clients can opt in to AdAudioSessionManager to request audio mixing.
 @MainActor
 public struct AdMusicProtectionPolicy {
-    private let isOtherAudioPlaying: () -> Bool
+    public init() {}
 
-    public init(
-        isOtherAudioPlaying: @escaping () -> Bool = {
-            AVAudioSession.sharedInstance().isOtherAudioPlaying
-        }
-    ) {
-        self.isOtherAudioPlaying = isOtherAudioPlaying
-    }
-
-    public var canPresentFullscreenAd: Bool {
-        !isOtherAudioPlaying()
-    }
+    public var canPresentFullscreenAd: Bool { true }
 }
