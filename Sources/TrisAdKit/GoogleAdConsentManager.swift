@@ -1,4 +1,4 @@
-import GoogleUserMessagingPlatform
+import UserMessagingPlatform
 import UIKit
 
 /// Request UMP consent on every application launch before requesting advertisements.
