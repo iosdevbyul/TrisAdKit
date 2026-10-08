@@ -135,7 +135,7 @@ private struct AdDemoView: View {
             canRequestAds = consent.canRequestAds
             if canRequestAds {
                 if !isSDKStarted {
-                    MobileAds.shared.start()
+                    await MobileAds.shared.start()
                     isSDKStarted = true
                 }
                 await interstitial?.prepare()
