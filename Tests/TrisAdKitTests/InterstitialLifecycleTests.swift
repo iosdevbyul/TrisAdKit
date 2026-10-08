@@ -49,18 +49,22 @@ final class InterstitialLifecycleTests: XCTestCase {
     func testFailureDoesNotLeaveControllerLocked() async {
         let mock = MockAdService(nextResult: .failed)
         let controller = InterstitialAdController(service: mock)
-        XCTAssertEqual(await controller.presentIfAvailable(), .failed)
+        let firstResult = await controller.presentIfAvailable()
+        XCTAssertEqual(firstResult, .failed)
         mock.nextResult = .dismissed
-        XCTAssertEqual(await controller.presentIfAvailable(), .dismissed)
+        let secondResult = await controller.presentIfAvailable()
+        XCTAssertEqual(secondResult, .dismissed)
         XCTAssertEqual(mock.presentationCallCount, 2)
     }
 
     func testUnavailableDoesNotLeaveControllerLocked() async {
         let mock = MockAdService(nextResult: .unavailable)
         let controller = InterstitialAdController(service: mock)
-        XCTAssertEqual(await controller.presentIfAvailable(), .unavailable)
+        let firstResult = await controller.presentIfAvailable()
+        XCTAssertEqual(firstResult, .unavailable)
         mock.nextResult = .dismissed
-        XCTAssertEqual(await controller.presentIfAvailable(), .dismissed)
+        let secondResult = await controller.presentIfAvailable()
+        XCTAssertEqual(secondResult, .dismissed)
     }
 
     func testFrequencyCapRequiresBothElapsedTimeAndOpportunities() {
