@@ -19,3 +19,10 @@ jobs:
           SIMULATOR_ID="$(xcrun simctl list devices available -j | python3 -c 'import json,sys; d=json.load(sys.stdin); a=[x["udid"] for runtime,devices in d["devices"].items() if "iOS" in runtime for x in devices if x.get("isAvailable") and x.get("name","").startswith("iPhone")]; print(a[0] if a else "")')"
           test -n "$SIMULATOR_ID"
           xcodebuild -scheme TrisAdKit -destination "platform=iOS Simulator,id=$SIMULATOR_ID" CODE_SIGNING_ALLOWED=NO test
+
+      - name: Build standalone TrisAdKitDemo
+        run: |
+          set -euo pipefail
+          SIMULATOR_ID="$(xcrun simctl list devices available -j | python3 -c 'import json,sys; d=json.load(sys.stdin); a=[x["udid"] for runtime,devices in d["devices"].items() if "iOS" in runtime for x in devices if x.get("isAvailable") and x.get("name","").startswith("iPhone")]; print(a[0] if a else "")')"
+          test -n "$SIMULATOR_ID"
+          xcodebuild -project Example/TrisAdKitDemo.xcodeproj -scheme TrisAdKitDemo -destination "platform=iOS Simulator,id=$SIMULATOR_ID" CODE_SIGNING_ALLOWED=NO build
