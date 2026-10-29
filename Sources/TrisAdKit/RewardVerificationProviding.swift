@@ -42,13 +42,13 @@ public final class RemoteRewardVerificationProvider: RewardVerificationProviding
         guard baseURL.scheme?.lowercased() == "https" else {
             throw RewardVerificationError.insecureEndpoint
         }
+        let allowed = CharacterSet(charactersIn: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_")
         guard !transactionId.isEmpty,
-              let encoded = transactionId.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed),
-              !encoded.contains("/") else {
+              transactionId.unicodeScalars.allSatisfy({ allowed.contains($0) }) else {
             throw RewardVerificationError.invalidTransactionId
         }
         let url = baseURL.appendingPathComponent("v1/rewards/transactions")
-            .appendingPathComponent(encoded)
+            .appendingPathComponent(transactionId)
         var request = URLRequest(url: url)
         request.httpMethod = "GET"
         request.timeoutInterval = 10
