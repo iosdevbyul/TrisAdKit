@@ -4,6 +4,8 @@ import SwiftUI
 /// verified balances from an authorized reward ledger, never mint points here.
 public struct TrisSideHustleView: View {
     public let confirmedPoints: Int?
+    public let pointsProvider: (any RewardPointsProviding)?
+    @State private var pointsSnapshot: RewardPointsSnapshot?
     public let onWatchAd: () async -> RewardedVideoResult
     public let onOpenRewards: () -> Void
 
@@ -12,10 +14,12 @@ public struct TrisSideHustleView: View {
 
     public init(
         confirmedPoints: Int? = nil,
+        pointsProvider: (any RewardPointsProviding)? = nil,
         onWatchAd: @escaping () async -> RewardedVideoResult = { .unavailable },
         onOpenRewards: @escaping () -> Void = {}
     ) {
         self.confirmedPoints = confirmedPoints
+        self.pointsProvider = pointsProvider
         self.onWatchAd = onWatchAd
         self.onOpenRewards = onOpenRewards
     }
@@ -26,18 +30,41 @@ public struct TrisSideHustleView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("내 포인트")
                         .font(.headline)
-                    Text(confirmedPoints.map { String($0.formatted()) + " P" } ?? "연동 전")
+                    Text((pointsSnapshot?.balance ?? confirmedPoints).map { String($0.formatted()) + " P" } ?? "연동 전")
                         .font(.largeTitle.bold())
                     Text("확정된 보상만 표시됩니다.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
+                    if pointsProvider != nil {
+                        Button("새로고침") { Task { await refreshPoints() } }
+                            .buttonStyle(.bordered)
+                    }
                     Button("포인트 사용처", action: onOpenRewards)
-                        .disabled(confirmedPoints == nil)
+                        .disabled((pointsSnapshot?.balance ?? confirmedPoints) == nil)
                         .buttonStyle(.bordered)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding()
                 .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+
+                if let pointsSnapshot, !pointsSnapshot.entries.isEmpty {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("최근 포인트 적립 내역").font(.headline)
+                        ForEach(pointsSnapshot.entries) { entry in
+                            HStack {
+                                VStack(alignment: .leading, spacing: 3) {
+                                    Text(entry.description).font(.subheadline)
+                                    Text(entry.awardedAt, format: .dateTime.year().month().day())
+                                        .font(.caption).foregroundStyle(.secondary)
+                                }
+                                Spacer()
+                                Text("+\(entry.points) P").font(.subheadline.bold())
+                            }
+                        }
+                    }
+                    .padding()
+                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+                }
 
                 VStack(alignment: .leading, spacing: 12) {
                     Label("광고 보고 리워드 받기", systemImage: "play.rectangle")
@@ -52,7 +79,8 @@ public struct TrisSideHustleView: View {
                             let result = await onWatchAd()
                             switch result {
                             case .completed:
-                                message = "광고 시청을 완료했습니다. 보상 확정은 별도로 확인됩니다."
+                                message = "광고 시청을 완료했습니다. 확정 포인트를 확인합니다."
+                                await refreshPoints()
                             case .dismissed:
                                 message = "광고 시청이 완료되지 않았습니다."
                             case .unavailable:
@@ -83,5 +111,15 @@ public struct TrisSideHustleView: View {
             .padding()
         }
         .navigationTitle("부업")
+        .task { await refreshPoints() }
+    }
+    @MainActor
+    private func refreshPoints() async {
+        guard let pointsProvider else { return }
+        do {
+            pointsSnapshot = try await pointsProvider.fetchConfirmedPoints()
+        } catch {
+            message = "포인트 적립 내역을 확인할 수 없습니다."
+        }
     }
 }
