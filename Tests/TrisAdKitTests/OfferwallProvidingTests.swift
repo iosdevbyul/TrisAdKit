@@ -6,7 +6,8 @@ final class OfferwallProvidingTests: XCTestCase {
     func testMockProviderDoesNotClaimRewards() async {
         let provider = MockOfferwallProvider(nextResult: .presented)
         let coordinator = OfferwallCoordinator(provider: provider)
-        XCTAssertEqual(await coordinator.open(), .presented)
+        let result = await coordinator.open()
+        XCTAssertEqual(result, .presented)
         XCTAssertEqual(provider.presentationCount, 1)
     }
 
@@ -18,7 +19,8 @@ final class OfferwallProvidingTests: XCTestCase {
         }
         let coordinator = OfferwallCoordinator(provider: provider)
         XCTAssertEqual(coordinator.providerName, "TNK")
-        XCTAssertEqual(await coordinator.open(), .unavailable)
+        let result = await coordinator.open()
+        XCTAssertEqual(result, .unavailable)
         XCTAssertEqual(calls, 1)
     }
 }
