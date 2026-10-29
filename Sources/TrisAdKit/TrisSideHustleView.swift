@@ -62,7 +62,7 @@ public struct TrisSideHustleView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("내 포인트")
                         .font(.headline)
-                    Text(confirmedPoints.map { "\\($0.formatted()) P" } ?? "연동 전")
+                    Text(confirmedPoints.map { "\($0.formatted()) P" } ?? "연동 전")
                         .font(.largeTitle.bold())
                         .accessibilityIdentifier("trisadkit.confirmedPoints")
                     Text("광고주가 승인한 보상만 확정 포인트로 표시됩니다.")
@@ -104,7 +104,7 @@ public struct TrisSideHustleView: View {
                                         .foregroundStyle(.secondary)
                                 }
                                 Spacer(minLength: 8)
-                                Text("+\\(mission.pendingPoints) P")
+                                Text("+\(mission.pendingPoints) P")
                                     .font(.subheadline.bold())
                             }
                             .padding()
