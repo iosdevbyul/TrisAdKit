@@ -1,4 +1,7 @@
 import unittest
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from auth import reject_all_tokens, development_token_verifier
 
 class AuthTests(unittest.TestCase):
