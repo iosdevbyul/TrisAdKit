@@ -3,13 +3,16 @@ import XCTest
 @testable import TrisAdKit
 
 private final class PointsURLProtocol: URLProtocol {
-    static let lock = NSLock()
-    static var responseData = Data()
+    static let responseData = Data(
+        """
+        {"balance":12,"entries":[{"id":"tnk:tx1","points":12,"awardedAt":"2026-10-30T00:00:00.123456+00:00","description":"Verified rewarded video"}]}
+        """.utf8
+    )
 
     override class func canInit(with request: URLRequest) -> Bool { true }
     override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
     override func startLoading() {
-        let data = Self.lock.withLock { Self.responseData }
+        let data = Self.responseData
         client?.urlProtocol(self, didReceive: HTTPURLResponse(
             url: request.url!, statusCode: 200, httpVersion: nil,
             headerFields: ["Content-Type": "application/json"]
@@ -53,13 +56,6 @@ final class RemoteRewardPointsProviderTests: XCTestCase {
     }
 
     func testDecodesAuthoritativeLedgerSnapshot() async throws {
-        PointsURLProtocol.lock.withLock {
-            PointsURLProtocol.responseData = Data(
-                """
-                {"balance":12,"entries":[{"id":"tnk:tx1","points":12,"awardedAt":"2026-10-30T00:00:00.123456+00:00","description":"Verified rewarded video"}]}
-                """.utf8
-            )
-        }
         let config = URLSessionConfiguration.ephemeral
         config.protocolClasses = [PointsURLProtocol.self]
         let provider = RemoteRewardPointsProvider(
