@@ -28,18 +28,18 @@ public struct TrisSideHustleView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("내 포인트")
+                    Text(String(localized: "side_hustle.points", bundle: .module))
                         .font(.headline)
-                    Text((pointsSnapshot?.balance ?? confirmedPoints).map { String($0.formatted()) + " P" } ?? "연동 전")
+                    Text((pointsSnapshot?.balance ?? confirmedPoints).map { String($0.formatted()) + " P" } ?? String(localized: "side_hustle.pending", bundle: .module))
                         .font(.largeTitle.bold())
-                    Text("확정된 보상만 표시됩니다.")
+                    Text(String(localized: "side_hustle.confirmed", bundle: .module))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                     if pointsProvider != nil {
-                        Button("새로고침") { Task { await refreshPoints() } }
+                        Button(String(localized: "side_hustle.refresh", bundle: .module)) { Task { await refreshPoints() } }
                             .buttonStyle(.bordered)
                     }
-                    Button("포인트 사용처", action: onOpenRewards)
+                    Button(String(localized: "side_hustle.use", bundle: .module), action: onOpenRewards)
                         .disabled((pointsSnapshot?.balance ?? confirmedPoints) == nil)
                         .buttonStyle(.bordered)
                 }
@@ -49,7 +49,7 @@ public struct TrisSideHustleView: View {
 
                 if let pointsSnapshot, !pointsSnapshot.entries.isEmpty {
                     VStack(alignment: .leading, spacing: 10) {
-                        Text("최근 포인트 적립 내역").font(.headline)
+                        Text(String(localized: "side_hustle.history", bundle: .module)).font(.headline)
                         ForEach(pointsSnapshot.entries) { entry in
                             HStack {
                                 VStack(alignment: .leading, spacing: 3) {
@@ -67,9 +67,9 @@ public struct TrisSideHustleView: View {
                 }
 
                 VStack(alignment: .leading, spacing: 12) {
-                    Label("광고 보고 리워드 받기", systemImage: "play.rectangle")
+                    Label(String(localized: "side_hustle.watch_title", bundle: .module), systemImage: "play.rectangle")
                         .font(.title3.bold())
-                    Text("원할 때 동영상 광고를 시청할 수 있습니다. 지급 가능한 보상은 광고 사업자와의 계약 및 서버 확인에 따라 결정됩니다.")
+                    Text(String(localized: "side_hustle.watch_desc", bundle: .module))
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                     Button {
@@ -79,21 +79,21 @@ public struct TrisSideHustleView: View {
                             let result = await onWatchAd()
                             switch result {
                             case .completed:
-                                message = "광고 시청을 완료했습니다. 확정 포인트를 확인합니다."
+                                message = String(localized: "side_hustle.completed", bundle: .module)
                                 await refreshPoints()
                             case .dismissed:
-                                message = "광고 시청이 완료되지 않았습니다."
+                                message = String(localized: "side_hustle.dismissed", bundle: .module)
                             case .unavailable:
-                                message = "현재 이용 가능한 광고가 없습니다."
+                                message = String(localized: "side_hustle.unavailable", bundle: .module)
                             case .failed:
-                                message = "광고를 열지 못했습니다."
+                                message = String(localized: "side_hustle.failed", bundle: .module)
                             }
                             loading = false
                         }
                     } label: {
                         HStack {
                             if loading { ProgressView() }
-                            Text("광고 보기")
+                            Text(String(localized: "side_hustle.watch", bundle: .module))
                         }
                     }
                     .disabled(loading)
@@ -110,7 +110,7 @@ public struct TrisSideHustleView: View {
             }
             .padding()
         }
-        .navigationTitle("부업")
+        .navigationTitle(String(localized: "side_hustle.title", bundle: .module))
         .task { await refreshPoints() }
     }
     @MainActor
@@ -119,7 +119,7 @@ public struct TrisSideHustleView: View {
         do {
             pointsSnapshot = try await pointsProvider.fetchConfirmedPoints()
         } catch {
-            message = "포인트 적립 내역을 확인할 수 없습니다."
+            message = String(localized: "side_hustle.error", bundle: .module)
         }
     }
 }

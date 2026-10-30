@@ -3,6 +3,7 @@ import PackageDescription
 
 let package = Package(
     name: "TrisAdKit",
+    defaultLocalization: "en",
     platforms: [.iOS(.v17)],
     products: [.library(name: "TrisAdKit", targets: ["TrisAdKit"])],
     dependencies: [
@@ -21,7 +22,8 @@ let package = Package(
             dependencies: [
                 .product(name: "GoogleMobileAds", package: "swift-package-manager-google-mobile-ads"),
                 .product(name: "GoogleUserMessagingPlatform", package: "swift-package-manager-google-user-messaging-platform")
-            ]
+            ],
+            resources: [.process("Resources")]
         ),
         .testTarget(name: "TrisAdKitTests", dependencies: ["TrisAdKit"])
     ]
