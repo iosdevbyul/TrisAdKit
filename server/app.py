@@ -1,0 +1,68 @@
+"""Read-only WSGI API for authenticated reward balances and transactions.
+
+Only identities configured in REWARD_API_TOKENS_JSON can read their own ledger.
+This is an integration scaffold, not a production identity provider.
+"""
+import hmac
+import json
+import os
+from urllib.parse import unquote
+
+from reward_ledger import RewardLedger
+
+
+def create_app(ledger, tokens):
+    def app(environ, start_response):
+        def reply(code, obj):
+            body = json.dumps(obj, separators=(",", ":")).encode("utf-8")
+            start_response(code, [
+                ("Content-Type", "application/json; charset=utf-8"),
+                ("Content-Length", str(len(body))),
+                ("Cache-Control", "no-store"),
+            ])
+            return [body]
+
+        if environ.get("REQUEST_METHOD") != "GET":
+            return reply("405 Method Not Allowed", {"error": "method_not_allowed"})
+        authorization = environ.get("HTTP_AUTHORIZATION", "")
+        if not authorization.startswith("Bearer "):
+            return reply("401 Unauthorized", {"error": "unauthorized"})
+        supplied = authorization[len("Bearer "):]
+        user_id = next(
+            (user for token, user in tokens.items()
+             if hmac.compare_digest(token, supplied)), None
+        )
+        if user_id is None:
+            return reply("401 Unauthorized", {"error": "unauthorized"})
+        path = environ.get("PATH_INFO", "")
+        if path == "/v1/rewards/points":
+            return reply("200 OK", ledger.snapshot(user_id))
+        prefix = "/v1/rewards/transactions/"
+        if path.startswith(prefix):
+            transaction_id = unquote(path[len(prefix):])
+            if not transaction_id or "/" in transaction_id or ".." in transaction_id:
+                return reply("400 Bad Request", {"error": "invalid_transaction_id"})
+            result = ledger.status(user_id, transaction_id)
+            if result is None:
+                return reply("404 Not Found", {"error": "not_found"})
+            return reply("200 OK", result)
+        return reply("404 Not Found", {"error": "not_found"})
+
+    return app
+
+
+if __name__ == "__main__":
+    from wsgiref.simple_server import make_server
+
+    tokens = json.loads(os.environ.get("REWARD_API_TOKENS_JSON", "{}"))
+    if not isinstance(tokens, dict) or not tokens or not all(
+        isinstance(t, str) and len(t) >= 32 and isinstance(u, str) and u
+        for t, u in tokens.items()
+    ):
+        raise SystemExit("Set REWARD_API_TOKENS_JSON to 32+ character tokens mapped to user IDs")
+    ledger = RewardLedger(os.environ.get("REWARD_DATABASE", "rewards.sqlite3"))
+    # Bind locally. Put behind an authenticated TLS reverse proxy before exposing.
+    with make_server("127.0.0.1", int(os.environ.get("PORT", "8765")),
+                     create_app(ledger, tokens)) as server:
+        print(f"Reward ledger API listening locally on {server.server_port}")
+        server.serve_forever()
