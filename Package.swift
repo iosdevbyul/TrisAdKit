@@ -3,6 +3,7 @@ import PackageDescription
 
 let package = Package(
     name: "TrisAdKit",
+    defaultLocalization: "en",
     platforms: [.iOS(.v17)],
     products: [.library(name: "TrisAdKit", targets: ["TrisAdKit"])],
     dependencies: [
