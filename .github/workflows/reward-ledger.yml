@@ -1,0 +1,15 @@
+name: Reward ledger server tests
+on:
+  pull_request:
+  push:
+    branches: [main]
+jobs:
+  reward-ledger:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run offline ledger tests
+        run: python -m unittest discover -s server/tests -v
