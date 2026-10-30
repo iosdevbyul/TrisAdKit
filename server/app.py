@@ -11,13 +11,18 @@ from reward_ledger import RewardLedger
 from auth import development_token_verifier, reject_all_tokens
 
 
-def create_app(ledger, tokens=None, *, authenticate=None):
+def create_app(ledger, tokens=None, *, authenticate=None, local_sessions=None):
     if tokens is not None and authenticate is not None:
         raise ValueError("Choose one authentication implementation")
     verifier = authenticate if authenticate is not None else (
         development_token_verifier(tokens) if tokens is not None
         else reject_all_tokens
     )
+    if local_sessions is not None:
+        if tokens is not None or authenticate is not None:
+            raise ValueError("Local sessions cannot be combined with another authenticator")
+        verifier = local_sessions.verify
+
     def app(environ, start_response):
         def reply(code, obj):
             body = json.dumps(obj, separators=(",", ":")).encode("utf-8")
@@ -28,6 +33,10 @@ def create_app(ledger, tokens=None, *, authenticate=None):
             ])
             return [body]
 
+        if environ.get("PATH_INFO") == "/v1/rewards/local-session" and environ.get("REQUEST_METHOD") == "POST":
+            if local_sessions is None:
+                return reply("404 Not Found", {"error": "not_found"})
+            return reply("201 Created", local_sessions.issue())
         if environ.get("REQUEST_METHOD") == "GET" and environ.get("PATH_INFO") == "/healthz":
             return reply("200 OK", {"status": "ok"})
         if environ.get("REQUEST_METHOD") != "GET":
@@ -63,17 +72,26 @@ def create_app(ledger, tokens=None, *, authenticate=None):
 if __name__ == "__main__":
     from wsgiref.simple_server import make_server
 
+    allow_local_sessions = os.environ.get("REWARD_ENABLE_LOCAL_SESSIONS") == "1"
     tokens = json.loads(os.environ.get("REWARD_API_TOKENS_JSON", "{}"))
     if not isinstance(tokens, dict):
         raise SystemExit("REWARD_API_TOKENS_JSON must be a JSON object")
-    try:
-        verifier = development_token_verifier(tokens)
-    except ValueError as exc:
-        raise SystemExit(str(exc)) from exc
+    if allow_local_sessions and tokens:
+        raise SystemExit("Local sessions and token map cannot both be enabled")
     ledger = RewardLedger(os.environ.get("REWARD_DATABASE", "rewards.sqlite3"))
+    local_sessions = None
+    if allow_local_sessions:
+        from local_sessions import LocalSessionStore
+        local_sessions = LocalSessionStore(ledger.database)
+        verifier = None
+    else:
+        try:
+            verifier = development_token_verifier(tokens)
+        except ValueError as exc:
+            raise SystemExit(str(exc)) from exc
     # Container mode may bind all interfaces; Compose must publish on loopback only.
     bind_host = os.environ.get("REWARD_BIND_HOST", "127.0.0.1")
     with make_server(bind_host, int(os.environ.get("PORT", "8765")),
-                     create_app(ledger, authenticate=verifier)) as server:
+                     create_app(ledger, local_sessions=local_sessions) if allow_local_sessions else create_app(ledger, authenticate=verifier)) as server:
         print(f"Reward ledger API listening locally on {server.server_port}")
         server.serve_forever()
