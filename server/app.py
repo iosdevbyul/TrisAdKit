@@ -3,15 +3,21 @@
 Only identities configured in REWARD_API_TOKENS_JSON can read their own ledger.
 This is an integration scaffold, not a production identity provider.
 """
-import hmac
 import json
 import os
 from urllib.parse import unquote
 
 from reward_ledger import RewardLedger
+from auth import development_token_verifier, reject_all_tokens
 
 
-def create_app(ledger, tokens):
+def create_app(ledger, tokens=None, *, authenticate=None):
+    if tokens is not None and authenticate is not None:
+        raise ValueError("Choose one authentication implementation")
+    verifier = authenticate if authenticate is not None else (
+        development_token_verifier(tokens) if tokens is not None
+        else reject_all_tokens
+    )
     def app(environ, start_response):
         def reply(code, obj):
             body = json.dumps(obj, separators=(",", ":")).encode("utf-8")
@@ -28,10 +34,11 @@ def create_app(ledger, tokens):
         if not authorization.startswith("Bearer "):
             return reply("401 Unauthorized", {"error": "unauthorized"})
         supplied = authorization[len("Bearer "):]
-        user_id = next(
-            (user for token, user in tokens.items()
-             if hmac.compare_digest(token, supplied)), None
-        )
+        try:
+            user_id = verifier(supplied)
+        except Exception:
+            # Identity-provider failures must not grant ledger access.
+            user_id = None
         if user_id is None:
             return reply("401 Unauthorized", {"error": "unauthorized"})
         path = environ.get("PATH_INFO", "")
@@ -55,14 +62,15 @@ if __name__ == "__main__":
     from wsgiref.simple_server import make_server
 
     tokens = json.loads(os.environ.get("REWARD_API_TOKENS_JSON", "{}"))
-    if not isinstance(tokens, dict) or not tokens or not all(
-        isinstance(t, str) and len(t) >= 32 and isinstance(u, str) and u
-        for t, u in tokens.items()
-    ):
-        raise SystemExit("Set REWARD_API_TOKENS_JSON to 32+ character tokens mapped to user IDs")
+    if not isinstance(tokens, dict):
+        raise SystemExit("REWARD_API_TOKENS_JSON must be a JSON object")
+    try:
+        verifier = development_token_verifier(tokens)
+    except ValueError as exc:
+        raise SystemExit(str(exc)) from exc
     ledger = RewardLedger(os.environ.get("REWARD_DATABASE", "rewards.sqlite3"))
     # Bind locally. Put behind an authenticated TLS reverse proxy before exposing.
     with make_server("127.0.0.1", int(os.environ.get("PORT", "8765")),
-                     create_app(ledger, tokens)) as server:
+                     create_app(ledger, authenticate=verifier)) as server:
         print(f"Reward ledger API listening locally on {server.server_port}")
         server.serve_forever()
