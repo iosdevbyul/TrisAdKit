@@ -28,6 +28,8 @@ def create_app(ledger, tokens=None, *, authenticate=None):
             ])
             return [body]
 
+        if environ.get("REQUEST_METHOD") == "GET" and environ.get("PATH_INFO") == "/healthz":
+            return reply("200 OK", {"status": "ok"})
         if environ.get("REQUEST_METHOD") != "GET":
             return reply("405 Method Not Allowed", {"error": "method_not_allowed"})
         authorization = environ.get("HTTP_AUTHORIZATION", "")
@@ -69,8 +71,9 @@ if __name__ == "__main__":
     except ValueError as exc:
         raise SystemExit(str(exc)) from exc
     ledger = RewardLedger(os.environ.get("REWARD_DATABASE", "rewards.sqlite3"))
-    # Bind locally. Put behind an authenticated TLS reverse proxy before exposing.
-    with make_server("127.0.0.1", int(os.environ.get("PORT", "8765")),
+    # Container mode may bind all interfaces; Compose must publish on loopback only.
+    bind_host = os.environ.get("REWARD_BIND_HOST", "127.0.0.1")
+    with make_server(bind_host, int(os.environ.get("PORT", "8765")),
                      create_app(ledger, authenticate=verifier)) as server:
         print(f"Reward ledger API listening locally on {server.server_port}")
         server.serve_forever()
