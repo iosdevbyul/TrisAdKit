@@ -1,0 +1,15 @@
+"side_hustle.points" = "My Points";
+"side_hustle.pending" = "Not connected";
+"side_hustle.confirmed" = "Only confirmed rewards are shown.";
+"side_hustle.refresh" = "Refresh";
+"side_hustle.use" = "Where to Use Points";
+"side_hustle.history" = "Recent Point Activity";
+"side_hustle.watch_title" = "Watch Ads & Earn Rewards";
+"side_hustle.watch_desc" = "Watch an optional video ad. Available rewards depend on the ad provider agreement and server verification.";
+"side_hustle.watch" = "Watch Ad";
+"side_hustle.completed" = "Ad completed. Checking confirmed points.";
+"side_hustle.dismissed" = "Ad viewing was not completed.";
+"side_hustle.unavailable" = "No ads are currently available.";
+"side_hustle.failed" = "Unable to open the ad.";
+"side_hustle.error" = "Unable to load point activity.";
+"side_hustle.title" = "Side Hustle";
